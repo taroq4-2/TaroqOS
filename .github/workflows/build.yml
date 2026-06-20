@@ -17,20 +17,29 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK licenses
+      - name: Accept Android SDK licenses
         run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
 
-      - name: Install Gradle 8.4 and generate wrapper
+      - name: Setup Gradle 8.4 and generate wrapper
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -O /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /tmp/gradle
           /tmp/gradle/gradle-8.4/bin/gradle wrapper --gradle-version=8.4 --distribution-type=bin
           chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
 
-      - name: Upload APK
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --build-cache
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: TaroqOS-Debug-APK
