@@ -17,18 +17,15 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Accept Android SDK licenses
+      - name: Setup Android SDK licenses
         run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
 
-      - name: Generate Gradle Wrapper
+      - name: Install Gradle 8.4 and generate wrapper
         run: |
-          gradle wrapper --gradle-version=8.4 --distribution-type=bin
+          wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp/gradle
+          /tmp/gradle/gradle-8.4/bin/gradle wrapper --gradle-version=8.4 --distribution-type=bin
           chmod +x gradlew
-
-      - name: Setup Gradle Cache
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: false
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
