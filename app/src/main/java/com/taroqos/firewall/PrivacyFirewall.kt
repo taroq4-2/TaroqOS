@@ -159,10 +159,6 @@ object PrivacyFirewall {
         allowedPackages.remove(packageName)
     }
 
-    fun setMode(newMode: FirewallMode) {
-        mode = newMode
-    }
-
     fun getConnectionLog(): List<ConnectionEntry> = connectionLog.toList()
 
     fun getStats(): Map<String, Any> = mapOf(
