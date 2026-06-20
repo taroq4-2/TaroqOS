@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark"
@@ -30,14 +31,17 @@
                 android:textSize="26sp"
                 android:textStyle="bold" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_about"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="حول"
                 android:textColor="@color/accent"
-                android:background="@android:color/transparent"
-                android:textSize="15sp" />
+                app:backgroundTint="@android:color/transparent"
+                app:strokeColor="@color/accent"
+                app:strokeWidth="1dp"
+                app:cornerRadius="20dp"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <TextView
@@ -56,8 +60,7 @@
             android:layout_marginTop="28dp"
             app:cardBackgroundColor="@color/card_bg"
             app:cardCornerRadius="24dp"
-            app:cardElevation="8dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
+            app:cardElevation="8dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -97,7 +100,7 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_toggle"
                     android:layout_width="220dp"
                     android:layout_height="52dp"
@@ -106,8 +109,8 @@
                     android:textColor="@color/white"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    android:backgroundTint="@color/start_green"
-                    android:cornerRadius="30dp" />
+                    app:backgroundTint="@color/start_green"
+                    app:cornerRadius="30dp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -118,7 +121,6 @@
             android:orientation="horizontal"
             android:layout_marginTop="20dp">
 
-            <!-- Blocked -->
             <androidx.cardview.widget.CardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -126,8 +128,7 @@
                 android:layout_marginEnd="8dp"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                xmlns:app="http://schemas.android.com/apk/res-auto">
+                app:cardElevation="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -154,7 +155,6 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Allowed -->
             <androidx.cardview.widget.CardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -162,8 +162,7 @@
                 android:layout_marginStart="8dp"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                xmlns:app="http://schemas.android.com/apk/res-auto">
+                app:cardElevation="4dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -198,8 +197,7 @@
             android:layout_marginTop="20dp"
             app:cardBackgroundColor="@color/card_bg2"
             app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
-            xmlns:app="http://schemas.android.com/apk/res-auto">
+            app:cardElevation="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -226,7 +224,6 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Footer -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
