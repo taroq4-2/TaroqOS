@@ -13,7 +13,6 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.*
 import java.nio.ByteBuffer
-import java.nio.channels.DatagramChannel
 
 class TaroqVpnService : VpnService() {
 
@@ -80,7 +79,8 @@ class TaroqVpnService : VpnService() {
         val outputStream = FileOutputStream(vpnFd.fileDescriptor)
         val buffer = ByteArray(32767)
 
-        while (isRunning && isActive) {
+        while (isRunning) {
+            ensureActive()
             try {
                 val length = inputStream.read(buffer)
                 if (length <= 0) {
