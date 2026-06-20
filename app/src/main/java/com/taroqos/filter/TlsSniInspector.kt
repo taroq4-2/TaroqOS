@@ -11,8 +11,8 @@ package com.taroqos.filter
  * حتى مع اتصالات HTTPS.
  *
  * بنية TLS ClientHello:
- *   - Record Layer:    [0x16][ver][len]
- *   - Handshake:       [0x01][len24][ClientHello...]
+ *   - Record Layer:    (0x16)(ver)(len)
+ *   - Handshake:       (0x01)(len24)(ClientHello body)
  *   - SNI Extension:   type=0x0000, list_type=0x00
  */
 object TlsSniInspector {
