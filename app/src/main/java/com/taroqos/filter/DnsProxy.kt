@@ -1,11 +1,21 @@
 package com.taroqos.filter
 
 import android.net.VpnService
+import com.taroqos.ai.AiAdClassifier
 import java.io.Closeable
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 
+/**
+ * DnsProxy — الجسر بين شبكة الجهاز وخوادم DNS الخارجية
+ *
+ * يعالج كل استعلام DNS عبر مسار من الطبقات:
+ *   1. DNS Blocklist (Layer 1)
+ *   2. Pattern Matching — Regex (Layer 1)
+ *   3. AI Classifier — للنطاقات غير المعروفة (Layer 6)
+ *   4. Forward to upstream DNS (8.8.8.8) إن لم يُحجب
+ */
 class DnsProxy(private val vpnService: VpnService) : Closeable {
 
     companion object {
@@ -14,7 +24,6 @@ class DnsProxy(private val vpnService: VpnService) : Closeable {
         private const val TIMEOUT_MS = 3000
     }
 
-    // Reuse a single protected socket for all forwarded DNS queries (performance fix)
     private val socket: DatagramSocket = DatagramSocket().also { vpnService.protect(it) }
 
     var blockedCount = 0L
@@ -22,22 +31,36 @@ class DnsProxy(private val vpnService: VpnService) : Closeable {
     var allowedCount = 0L
         private set
 
-    fun handleDnsPacket(packet: ByteArray, len: Int): ByteArray? {
-        val ipHeaderLen  = PacketUtils.getIpHeaderLen(packet)
-        val dnsPayload   = PacketUtils.extractDnsPayload(packet, ipHeaderLen)
+    /**
+     * معالجة حزمة DNS مع دمج AI Classifier (Layer 6)
+     */
+    fun handleDnsPacketWithAi(packet: ByteArray, len: Int): ByteArray? {
+        val ipHeaderLen = PacketUtils.getIpHeaderLen(packet)
+        val dnsPayload  = PacketUtils.extractDnsPayload(packet, ipHeaderLen)
 
         if (!PacketUtils.isQueryPacket(dnsPayload)) return null
 
         val domain = PacketUtils.extractQueryDomain(dnsPayload) ?: return null
 
-        return if (AdBlockList.isBlocked(domain)) {
+        // Layer 1: فحص القائمة الصريحة والأنماط
+        if (AdBlockList.isBlocked(domain)) {
             blockedCount++
-            PacketUtils.buildNxdomainResponse(packet, ipHeaderLen)
-        } else {
-            allowedCount++
-            forwardToUpstream(packet, ipHeaderLen, dnsPayload)
+            return PacketUtils.buildNxdomainResponse(packet, ipHeaderLen)
         }
+
+        // Layer 6: AI Classifier للنطاقات غير الموجودة في القائمة
+        val aiResult = AiAdClassifier.classify(domain)
+        if (aiResult.isAd && aiResult.confidence >= 0.75f) {
+            blockedCount++
+            return PacketUtils.buildNxdomainResponse(packet, ipHeaderLen)
+        }
+
+        allowedCount++
+        return forwardToUpstream(packet, ipHeaderLen, dnsPayload)
     }
+
+    fun handleDnsPacket(packet: ByteArray, len: Int): ByteArray? =
+        handleDnsPacketWithAi(packet, len)
 
     private fun forwardToUpstream(
         originalPacket: ByteArray,
@@ -61,7 +84,5 @@ class DnsProxy(private val vpnService: VpnService) : Closeable {
         } catch (_: Exception) { null }
     }
 
-    override fun close() {
-        runCatching { socket.close() }
-    }
+    override fun close() { runCatching { socket.close() } }
 }

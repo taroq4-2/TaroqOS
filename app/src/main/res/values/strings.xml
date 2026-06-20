@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Taroq OS</string>
+    <string name="accessibility_service_label">Taroq OS — كاشف إعلانات الواجهة</string>
+    <string name="accessibility_service_description">يراقب عناصر واجهة التطبيقات ويخفي المنشورات الإعلانية (Sponsored/Promoted) تلقائياً في Instagram وSnapchat وTikTok وغيرها. لا يجمع أي بيانات شخصية.</string>
 </resources>

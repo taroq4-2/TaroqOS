@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
 
     <application
         android:allowBackup="true"
@@ -30,6 +31,7 @@
             android:parentActivityName=".ui.MainActivity"
             android:theme="@style/Theme.TaroqOS.WithActionBar" />
 
+        <!-- Layer 1 + 2 + 3 + 4: VPN Service (DNS + TLS SNI + HTTP) -->
         <service
             android:name=".TaroqVpnService"
             android:exported="false"
@@ -41,6 +43,20 @@
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
+        </service>
+
+        <!-- Layer 5: UI Accessibility Ad Detection -->
+        <service
+            android:name=".accessibility.TaroqAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
         </service>
 
         <receiver android:name=".BootReceiver" android:exported="false">

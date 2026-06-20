@@ -6,14 +6,20 @@ import android.content.res.ColorStateList
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.text.TextUtils
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
 import com.taroqos.R
 import com.taroqos.TaroqVpnService
+import com.taroqos.accessibility.TaroqAccessibilityService
+import com.taroqos.ai.AiAdClassifier
 import com.taroqos.databinding.ActivityMainBinding
 import com.taroqos.filter.AdBlockList
+import com.taroqos.filter.HttpAdDetector
+import com.taroqos.filter.TlsSniInspector
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -47,6 +53,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, AboutActivity::class.java))
         }
 
+        b.btnEnableAccessibility.setOnClickListener {
+            openAccessibilitySettings()
+        }
+
         b.tvDomainCount.text = "${AdBlockList.blockedDomains.size}+ نطاق محجوب"
 
         lifecycleScope.launch {
@@ -75,27 +85,61 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun openAccessibilitySettings() {
+        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
+    private fun isAccessibilityEnabled(): Boolean {
+        val service = "${packageName}/${TaroqAccessibilityService::class.java.canonicalName}"
+        val enabledServices = Settings.Secure.getString(
+            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        return TextUtils.SimpleStringSplitter(':').also { it.setString(enabledServices) }
+            .asSequence().any { it.equals(service, ignoreCase = true) }
+    }
+
     private fun refresh() {
-        val on = TaroqVpnService.isRunning
+        val vpnOn = TaroqVpnService.isRunning
+        val accessOn = isAccessibilityEnabled()
 
+        // Shield status
         b.statusDot.setBackgroundResource(
-            if (on) R.drawable.dot_green else R.drawable.dot_red
+            if (vpnOn) R.drawable.dot_green else R.drawable.dot_red
         )
-        b.tvStatusLabel.text  = if (on) "الحماية مفعّلة" else "الحماية متوقفة"
-        b.btnToggle.text      = if (on) "إيقاف الحماية"  else "تفعيل الحماية"
+        b.tvStatusLabel.text = if (vpnOn) "الحماية مفعّلة" else "الحماية متوقفة"
+        b.btnToggle.text     = if (vpnOn) "إيقاف الحماية" else "تفعيل الحماية"
 
-        // MaterialButton requires backgroundTintList — setBackgroundColor() is ignored
-        val tintColor = if (on) getColor(R.color.stop_red) else getColor(R.color.start_green)
+        val tintColor = if (vpnOn) getColor(R.color.stop_red) else getColor(R.color.start_green)
         b.btnToggle.backgroundTintList = ColorStateList.valueOf(tintColor)
+        b.tvShieldIcon.text = if (vpnOn) "🛡️" else "🔓"
 
-        b.tvShieldIcon.text = if (on) "🛡️" else "🔓"
-
-        if (on) {
-            b.tvBlockedCount.text = "${TaroqVpnService.blocked}"
+        // Stats
+        if (vpnOn) {
+            val totalBlocked = TaroqVpnService.blocked +
+                    TlsSniInspector.blockedBySni +
+                    HttpAdDetector.blockedByHttp +
+                    TaroqAccessibilityService.hiddenByAccessibility
+            b.tvBlockedCount.text = "$totalBlocked"
             b.tvAllowedCount.text = "${TaroqVpnService.allowed}"
         } else {
             b.tvBlockedCount.text = "—"
             b.tvAllowedCount.text = "—"
         }
+
+        // Layer statuses
+        b.tvLayer1Status.text = if (vpnOn) "🟢 نشط (${TaroqVpnService.blocked})" else "⚪ متوقف"
+        b.tvLayer2Status.text = if (vpnOn) "🟢 نشط" else "⚪ متوقف"
+        b.tvLayer3Status.text = if (vpnOn) "🟢 نشط (${TlsSniInspector.blockedBySni})" else "⚪ متوقف"
+        b.tvLayer4Status.text = if (vpnOn) "🟢 نشط (${HttpAdDetector.blockedByHttp})" else "⚪ متوقف"
+        b.tvLayer5Status.text = when {
+            accessOn -> "🟢 نشط (${TaroqAccessibilityService.hiddenByAccessibility})"
+            else     -> "🔴 غير مفعّل"
+        }
+        // Layer 6 (AI) runs passively inside VPN
+        b.tvLayer6Status.text = if (vpnOn) "🟢 نشط (${TlsSniInspector.inspectedCount} فحص)" else "⚪ متوقف"
+
+        // Accessibility prompt
+        b.cardAccessibilityPrompt.visibility = if (!accessOn)
+            android.view.View.VISIBLE else android.view.View.GONE
     }
 }

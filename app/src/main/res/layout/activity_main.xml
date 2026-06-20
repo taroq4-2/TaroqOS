@@ -47,7 +47,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="حاجب الإعلانات الذكي"
+            android:text="حاجب الإعلانات الذكي — 6 طبقات حماية"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
             android:layout_marginTop="2dp"
@@ -57,7 +57,7 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="20dp"
             app:cardBackgroundColor="@color/card_bg"
             app:cardCornerRadius="24dp"
             app:cardElevation="8dp">
@@ -67,21 +67,21 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="center"
-                android:padding="32dp">
+                android:padding="28dp">
 
                 <TextView
                     android:id="@+id/tv_shield_icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="🔓"
-                    android:textSize="72sp" />
+                    android:textSize="64sp" />
 
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="16dp">
+                    android:layout_marginTop="12dp">
 
                     <View
                         android:id="@+id/status_dot"
@@ -104,7 +104,7 @@
                     android:id="@+id/btn_toggle"
                     android:layout_width="220dp"
                     android:layout_height="52dp"
-                    android:layout_marginTop="20dp"
+                    android:layout_marginTop="16dp"
                     android:text="تفعيل الحماية"
                     android:textColor="@color/white"
                     android:textSize="15sp"
@@ -119,13 +119,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="20dp">
+            android:layout_marginTop="16dp">
 
             <androidx.cardview.widget.CardView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="6dp"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp">
@@ -135,7 +135,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
+                    android:padding="14dp">
 
                     <TextView
                         android:id="@+id/tv_blocked_count"
@@ -143,7 +143,7 @@
                         android:layout_height="wrap_content"
                         android:text="—"
                         android:textColor="@color/stop_red"
-                        android:textSize="28sp"
+                        android:textSize="26sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -151,7 +151,7 @@
                         android:layout_height="wrap_content"
                         android:text="محجوب"
                         android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:textSize="11sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -159,7 +159,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="6dp"
                 app:cardBackgroundColor="@color/card_bg"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp">
@@ -169,7 +169,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:padding="16dp">
+                    android:padding="14dp">
 
                     <TextView
                         android:id="@+id/tv_allowed_count"
@@ -177,7 +177,7 @@
                         android:layout_height="wrap_content"
                         android:text="—"
                         android:textColor="@color/start_green"
-                        android:textSize="28sp"
+                        android:textSize="26sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -185,17 +185,147 @@
                         android:layout_height="wrap_content"
                         android:text="مسموح"
                         android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:textSize="11sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
         </LinearLayout>
 
-        <!-- Info Card -->
+        <!-- 6 Layers Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            app:cardBackgroundColor="@color/card_bg2"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/card_bg"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🛡️ طبقات الحماية"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Layer 1 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="طبقة 1 — DNS Filter"
+                        android:textColor="@color/white" android:textSize="12sp" />
+                    <TextView android:id="@+id/tv_layer1_status"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="⚪ متوقف" android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Layer 2 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="طبقة 2 — VPN Filter"
+                        android:textColor="@color/white" android:textSize="12sp" />
+                    <TextView android:id="@+id/tv_layer2_status"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="⚪ متوقف" android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Layer 3 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="طبقة 3 — HTTPS/SNI Inspection"
+                        android:textColor="@color/white" android:textSize="12sp" />
+                    <TextView android:id="@+id/tv_layer3_status"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="⚪ متوقف" android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Layer 4 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="طبقة 4 — JSON Ad Detection"
+                        android:textColor="@color/white" android:textSize="12sp" />
+                    <TextView android:id="@+id/tv_layer4_status"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="⚪ متوقف" android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Layer 5 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="طبقة 5 — UI Accessibility"
+                        android:textColor="@color/white" android:textSize="12sp" />
+                    <TextView android:id="@+id/tv_layer5_status"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="⚪ معطل" android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <!-- Layer 6 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="طبقة 6 — AI Ad Classifier"
+                        android:textColor="@color/white" android:textSize="12sp" />
+                    <TextView android:id="@+id/tv_layer6_status"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="⚪ متوقف" android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Accessibility Banner (shown when not enabled) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/card_accessibility_prompt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="#1A4A8A"
             app:cardCornerRadius="16dp"
             app:cardElevation="4dp">
 
@@ -206,31 +336,67 @@
                 android:padding="16dp">
 
                 <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💡 فعّل طبقة الواجهة لحجب إعلانات Instagram وSnapchat"
+                    android:textColor="@color/white"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_enable_accessibility"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginTop="10dp"
+                    android:text="تفعيل الإمكانية"
+                    android:textSize="13sp"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/accent"
+                    app:cornerRadius="20dp" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Info Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/card_bg2"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
                     android:id="@+id/tv_domain_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="250+ نطاق محجوب"
                     android:textColor="@color/accent"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="تصفية DNS ذكية • بدون روت • بدون بيانات خارجية"
+                    android:layout_marginTop="3dp"
+                    android:text="DNS + VPN + TLS SNI + JSON + UI + AI • بدون روت • بدون بيانات خارجية"
                     android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:textSize="11sp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Taroq OS v3.0"
+            android:text="Taroq OS v4.0 — 6 Layers"
             android:textColor="@color/text_hint"
-            android:textSize="12sp"
-            android:layout_marginTop="24dp"
+            android:textSize="11sp"
+            android:layout_marginTop="20dp"
             android:layout_marginBottom="16dp" />
 
     </LinearLayout>

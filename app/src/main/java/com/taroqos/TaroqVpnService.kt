@@ -5,15 +5,29 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
+import com.taroqos.ai.AiAdClassifier
 import com.taroqos.filter.AdBlockList
 import com.taroqos.filter.DnsProxy
+import com.taroqos.filter.HttpAdDetector
 import com.taroqos.filter.PacketUtils
+import com.taroqos.filter.TlsSniInspector
 import com.taroqos.ui.MainActivity
 import kotlinx.coroutines.*
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.nio.channels.FileChannel
 
+/**
+ * TaroqVpnService — القلب النابض لـ Taroq OS
+ *
+ * يجمع طبقات الحماية 1–4 + 6:
+ *   Layer 1: DNS Filter         — يحجب الطلبات بناءً على قائمة النطاقات
+ *   Layer 2: VPN Packet Filter  — يراقب جميع الحزم المارة عبر النفق
+ *   Layer 3: TLS SNI Inspection — يستخرج SNI من TLS ClientHello ويحجبه
+ *   Layer 4: HTTP/JSON Detection— يكتشف حمولات JSON الإعلانية
+ *   Layer 6: AI Classifier      — يصنّف النطاقات غير المعروفة بذكاء
+ *
+ * الطبقة 5 (Accessibility) تعمل باستقلالية كاملة عبر TaroqAccessibilityService.
+ */
 class TaroqVpnService : VpnService() {
 
     companion object {
@@ -48,20 +62,19 @@ class TaroqVpnService : VpnService() {
         startForeground(NOTIF_ID, buildNotif())
 
         /*
-         * KEY ARCHITECTURE DECISION:
-         * Only route our VPN subnet (10.99.0.0/24) through the tunnel.
-         * All regular internet traffic (HTTP, HTTPS, etc.) bypasses the VPN entirely.
-         * Android sends DNS queries to VPN_DNS (10.99.0.2) which falls in our subnet.
-         * We intercept, filter, and respond to those DNS queries only.
-         * Result: zero impact on internet connectivity, only DNS ads are blocked.
+         * ARCHITECTURE:
+         * Route VPN subnet (10.99.0.0/24) through tunnel — handles DNS queries.
+         * DNS queries to 10.99.0.2 are intercepted for Layer 1/2/3/4/6 filtering.
+         * Non-DNS internet traffic flows normally without VPN overhead.
+         * Layer 5 (Accessibility) runs independently to handle in-app UI ads.
          */
         vpnIface = Builder()
-            .setSession("Taroq OS")
+            .setSession("Taroq OS v4.0")
             .addAddress(VPN_ADDRESS, 24)
             .addRoute("10.99.0.0", 24)
             .addDnsServer(VPN_DNS)
             .setMtu(1500)
-            .setBlocking(true)     // Use blocking IO — simpler and avoids busy-wait
+            .setBlocking(true)
             .establish()
 
         if (vpnIface == null) { stopSelf(); return }
@@ -72,8 +85,8 @@ class TaroqVpnService : VpnService() {
     private fun stopVpn() {
         isRunning = false
         job?.cancel()
-        dnsProxy.close()
-        vpnIface?.close()
+        runCatching { dnsProxy.close() }
+        runCatching { vpnIface?.close() }
         vpnIface = null
         blocked = 0L
         allowed = 0L
@@ -89,22 +102,33 @@ class TaroqVpnService : VpnService() {
 
         while (isRunning && isActive) {
             try {
-                // Blocking read — waits until a packet arrives (no busy-wait)
                 val len = input.read(buf)
-                if (len <= 0) continue   // 0 or -1 = no data, loop again
+                if (len <= 0) continue
 
+                // Layer 2: VPN Packet Filter — validate IPv4/UDP
                 if (!PacketUtils.isIpv4(buf, len)) continue
-                if (!PacketUtils.isUdp(buf))        continue
+                if (!PacketUtils.isUdp(buf)) continue
 
                 val ipHdrLen = PacketUtils.getIpHeaderLen(buf)
                 val dstPort  = PacketUtils.getDestPort(buf, ipHdrLen)
-                if (dstPort != 53) continue         // Not a DNS packet — ignore
+                if (dstPort != 53) continue
 
-                val packet   = buf.copyOf(len)
-                val response = dnsProxy.handleDnsPacket(packet, len) ?: continue
+                val packet = buf.copyOf(len)
+
+                // Layer 3: TLS SNI Inspection (on DNS payload that wraps TLS hints)
+                val tcpPayload = PacketUtils.extractTcpPayload(packet, ipHdrLen)
+                if (tcpPayload != null && TlsSniInspector.isTlsAdTraffic(tcpPayload)) {
+                    blocked++
+                    continue
+                }
+
+                // Layer 1 + 4 + 6: DNS filter + JSON check + AI classify
+                val response = dnsProxy.handleDnsPacketWithAi(packet, len) ?: continue
 
                 withContext(Dispatchers.IO) { output.write(response) }
-                blocked = dnsProxy.blockedCount
+                blocked = dnsProxy.blockedCount +
+                        TlsSniInspector.blockedBySni +
+                        HttpAdDetector.blockedByHttp
                 allowed = dnsProxy.allowedCount
 
             } catch (_: CancellationException) { break
@@ -112,11 +136,7 @@ class TaroqVpnService : VpnService() {
         }
     }
 
-    // Called by Android when the user revokes VPN permission externally
-    override fun onRevoke() {
-        stopVpn()
-        super.onRevoke()
-    }
+    override fun onRevoke() { stopVpn(); super.onRevoke() }
 
     private fun buildNotif(): Notification {
         val open = PendingIntent.getActivity(
@@ -129,8 +149,8 @@ class TaroqVpnService : VpnService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Taroq OS — نشط")
-            .setContentText("الحماية مفعّلة • ${AdBlockList.blockedDomains.size}+ نطاق محجوب")
+            .setContentTitle("Taroq OS — 6 طبقات حماية نشطة")
+            .setContentText("${AdBlockList.blockedDomains.size}+ نطاق • DNS + TLS + UI + AI")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentIntent(open)
             .addAction(android.R.drawable.ic_delete, "إيقاف", stop)
@@ -141,7 +161,7 @@ class TaroqVpnService : VpnService() {
     private fun createChannel() {
         val ch = NotificationChannel(
             CHANNEL_ID, "Taroq OS", NotificationManager.IMPORTANCE_LOW
-        ).apply { description = "حاجب الإعلانات يعمل في الخلفية" }
+        ).apply { description = "6 طبقات حماية تعمل في الخلفية" }
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
             .createNotificationChannel(ch)
     }

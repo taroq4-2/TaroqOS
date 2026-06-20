@@ -1,6 +1,5 @@
 package com.taroqos.filter
 
-import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -13,6 +12,8 @@ object PacketUtils {
     fun getIpHeaderLen(buf: ByteArray): Int = (buf[0].toInt() and 0x0F) * 4
 
     fun isUdp(buf: ByteArray): Boolean = getProtocol(buf) == 17
+
+    fun isTcp(buf: ByteArray): Boolean = getProtocol(buf) == 6
 
     fun getDestPort(buf: ByteArray, ipHeaderLen: Int): Int =
         ((buf[ipHeaderLen + 2].toInt() and 0xFF) shl 8) or (buf[ipHeaderLen + 3].toInt() and 0xFF)
@@ -29,6 +30,22 @@ object PacketUtils {
         return buf.copyOfRange(udpPayloadStart, buf.size)
     }
 
+    /**
+     * Layer 3 support: استخراج TCP payload لفحص TLS SNI
+     * يُستخدم لاستخراج TLS ClientHello من حزم TCP على منفذ 443
+     */
+    fun extractTcpPayload(buf: ByteArray, ipHeaderLen: Int): ByteArray? {
+        return try {
+            if (!isTcp(buf)) return null
+            // TCP data offset is in the high nibble of byte 12 of the TCP header
+            val tcpDataOffset = ((buf[ipHeaderLen + 12].toInt() and 0xFF) shr 4) * 4
+            val payloadStart = ipHeaderLen + tcpDataOffset
+            if (payloadStart >= buf.size) return null
+            val payload = buf.copyOfRange(payloadStart, buf.size)
+            if (payload.isEmpty()) null else payload
+        } catch (_: Exception) { null }
+    }
+
     fun buildUdpIpPacket(
         srcIp: ByteArray,
         dstIp: ByteArray,
@@ -39,29 +56,25 @@ object PacketUtils {
         val totalLen = 20 + 8 + payload.size
         val buf = ByteBuffer.allocate(totalLen).order(ByteOrder.BIG_ENDIAN)
 
-        // IPv4 header
-        buf.put(0x45.toByte())                                  // Version + IHL
-        buf.put(0x00)                                           // DSCP/ECN
-        buf.putShort(totalLen.toShort())                        // Total length
-        buf.putShort(0x0000)                                    // ID
-        buf.putShort(0x4000)                                    // Flags (Don't Fragment)
-        buf.put(0x40)                                           // TTL = 64
-        buf.put(0x11)                                           // Protocol = UDP
-        buf.putShort(0x0000)                                    // Checksum placeholder
-        buf.put(srcIp)                                          // Source IP
-        buf.put(dstIp)                                          // Destination IP
+        buf.put(0x45.toByte())
+        buf.put(0x00)
+        buf.putShort(totalLen.toShort())
+        buf.putShort(0x0000)
+        buf.putShort(0x4000)
+        buf.put(0x40)
+        buf.put(0x11)
+        buf.putShort(0x0000)
+        buf.put(srcIp)
+        buf.put(dstIp)
 
-        // Compute IP checksum
         val ipChecksum = computeChecksum(buf.array(), 0, 20)
         buf.putShort(10, ipChecksum)
 
-        // UDP header
         buf.putShort(srcPort.toShort())
         buf.putShort(dstPort.toShort())
         buf.putShort((8 + payload.size).toShort())
-        buf.putShort(0x0000)                                    // UDP checksum (optional)
+        buf.putShort(0x0000)
 
-        // Payload
         buf.put(payload)
 
         return buf.array()
@@ -84,19 +97,17 @@ object PacketUtils {
     fun buildNxdomainResponse(queryPacket: ByteArray, ipHeaderLen: Int): ByteArray {
         val dnsPayload = extractDnsPayload(queryPacket, ipHeaderLen)
         val response = dnsPayload.copyOf()
-        // Set QR=1, AA=1, RCODE=3 (NXDOMAIN)
         if (response.size >= 4) {
             response[2] = (0x81).toByte()
             response[3] = (0x83).toByte()
-            // Zero out answer/authority/additional counts
             if (response.size >= 12) {
                 response[6] = 0; response[7] = 0
                 response[8] = 0; response[9] = 0
                 response[10] = 0; response[11] = 0
             }
         }
-        val srcIp = getDestIp(queryPacket)
-        val dstIp = getSrcIp(queryPacket)
+        val srcIp   = getDestIp(queryPacket)
+        val dstIp   = getSrcIp(queryPacket)
         val srcPort = getDestPort(queryPacket, ipHeaderLen)
         val dstPort = getSrcPort(queryPacket, ipHeaderLen)
         return buildUdpIpPacket(srcIp, dstIp, srcPort, dstPort, response)
