@@ -8,13 +8,13 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 
 /**
- * DnsProxy — الجسر بين شبكة الجهاز وخوادم DNS الخارجية
+ * Layer 1 + 2 — DNS Proxy
  *
- * يعالج كل استعلام DNS عبر مسار من الطبقات:
- *   1. DNS Blocklist (Layer 1)
- *   2. Pattern Matching — Regex (Layer 1)
- *   3. AI Classifier — للنطاقات غير المعروفة (Layer 6)
- *   4. Forward to upstream DNS (8.8.8.8) إن لم يُحجب
+ * يعالج كل استعلام DNS عبر سلسلة من الطبقات:
+ *   1. DNS Blocklist         — قائمة 500+ نطاق معروف (Layer 1)
+ *   2. DoH Domain Detection  — كشف خوادم DoH (Layer 2)
+ *   3. AI/ML Classifier      — للنطاقات غير المعروفة (Layer 16)
+ *   4. Forward to upstream   — إرسال للـ DNS الحقيقي إن لم يُحجب
  */
 class DnsProxy(private val vpnService: VpnService) : Closeable {
 
@@ -27,13 +27,8 @@ class DnsProxy(private val vpnService: VpnService) : Closeable {
     private val socket: DatagramSocket = DatagramSocket().also { vpnService.protect(it) }
 
     var blockedCount = 0L
-        private set
     var allowedCount = 0L
-        private set
 
-    /**
-     * معالجة حزمة DNS مع دمج AI Classifier (Layer 6)
-     */
     fun handleDnsPacketWithAi(packet: ByteArray, len: Int): ByteArray? {
         val ipHeaderLen = PacketUtils.getIpHeaderLen(packet)
         val dnsPayload  = PacketUtils.extractDnsPayload(packet, ipHeaderLen)
@@ -42,13 +37,19 @@ class DnsProxy(private val vpnService: VpnService) : Closeable {
 
         val domain = PacketUtils.extractQueryDomain(dnsPayload) ?: return null
 
-        // Layer 1: فحص القائمة الصريحة والأنماط
+        // Layer 1: DNS blocklist
         if (AdBlockList.isBlocked(domain)) {
             blockedCount++
             return PacketUtils.buildNxdomainResponse(packet, ipHeaderLen)
         }
 
-        // Layer 6: AI Classifier للنطاقات غير الموجودة في القائمة
+        // Layer 2: DoH domain bypass check
+        if (DohProtection.isDoHDomain(domain)) {
+            blockedCount++
+            return PacketUtils.buildNxdomainResponse(packet, ipHeaderLen)
+        }
+
+        // Layer 16: AI/ML classifier for unknown domains
         val aiResult = AiAdClassifier.classify(domain)
         if (aiResult.isAd && aiResult.confidence >= 0.75f) {
             blockedCount++

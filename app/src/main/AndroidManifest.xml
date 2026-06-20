@@ -31,7 +31,11 @@
             android:parentActivityName=".ui.MainActivity"
             android:theme="@style/Theme.TaroqOS.WithActionBar" />
 
-        <!-- Layer 1 + 2 + 3 + 4: VPN Service (DNS + TLS SNI + HTTP) -->
+        <!--
+            Layers 1+2+3+4+15+16: VPN Service
+            يُدير DNS Filter + DoH Protection + Local VPN Engine +
+            URL Filter + Privacy Firewall + Offline ML
+        -->
         <service
             android:name=".TaroqVpnService"
             android:exported="false"
@@ -39,13 +43,16 @@
             android:foregroundServiceType="specialUse">
             <meta-data
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="VPN ad blocker" />
+                android:value="VPN ad blocker — 17 layers" />
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
 
-        <!-- Layer 5: UI Accessibility Ad Detection -->
+        <!--
+            Layers 6+7+8+9: Accessibility Service
+            يُدير UI Detection + OCR + Tree Analysis + Auto Hide
+        -->
         <service
             android:name=".accessibility.TaroqAccessibilityService"
             android:exported="true"

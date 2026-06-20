@@ -14,12 +14,23 @@ import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
 import com.taroqos.R
 import com.taroqos.TaroqVpnService
+import com.taroqos.accessibility.AutoHideEngine
 import com.taroqos.accessibility.TaroqAccessibilityService
-import com.taroqos.ai.AiAdClassifier
+import com.taroqos.ai.BehavioralDetector
+import com.taroqos.ai.OfflineMlEngine
+import com.taroqos.ai.VisualAiDetector
 import com.taroqos.databinding.ActivityMainBinding
 import com.taroqos.filter.AdBlockList
+import com.taroqos.filter.DohProtection
 import com.taroqos.filter.HttpAdDetector
+import com.taroqos.filter.SslPinningDetector
 import com.taroqos.filter.TlsSniInspector
+import com.taroqos.filter.UrlFilter
+import com.taroqos.firewall.PrivacyFirewall
+import com.taroqos.rules.AppRulesManager
+import com.taroqos.rules.CloudRuleUpdater
+import com.taroqos.telemetry.LocalTelemetry
+import com.taroqos.verification.BuildVerifier
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -58,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         b.tvDomainCount.text = "${AdBlockList.blockedDomains.size}+ نطاق محجوب"
+        b.tvVersion.text = "v${BuildVerifier.APP_VERSION} • ${BuildVerifier.LAYER_COUNT} طبقة"
 
         lifecycleScope.launch {
             while (isActive) { refresh(); delay(800) }
@@ -99,26 +111,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        val vpnOn = TaroqVpnService.isRunning
+        val vpnOn    = TaroqVpnService.isRunning
         val accessOn = isAccessibilityEnabled()
 
-        // Shield status
+        // ─── Shield status ───────────────────────────────────────────────────
         b.statusDot.setBackgroundResource(
             if (vpnOn) R.drawable.dot_green else R.drawable.dot_red
         )
-        b.tvStatusLabel.text = if (vpnOn) "الحماية مفعّلة" else "الحماية متوقفة"
+        b.tvStatusLabel.text = if (vpnOn) "الحماية مفعّلة — 17 طبقة" else "الحماية متوقفة"
         b.btnToggle.text     = if (vpnOn) "إيقاف الحماية" else "تفعيل الحماية"
 
         val tintColor = if (vpnOn) getColor(R.color.stop_red) else getColor(R.color.start_green)
         b.btnToggle.backgroundTintList = ColorStateList.valueOf(tintColor)
         b.tvShieldIcon.text = if (vpnOn) "🛡️" else "🔓"
 
-        // Stats
+        // ─── Total stats ─────────────────────────────────────────────────────
         if (vpnOn) {
             val totalBlocked = TaroqVpnService.blocked +
                     TlsSniInspector.blockedBySni +
                     HttpAdDetector.blockedByHttp +
-                    TaroqAccessibilityService.hiddenByAccessibility
+                    TaroqAccessibilityService.hiddenByAccessibility +
+                    DohProtection.blockedByDoh +
+                    PrivacyFirewall.blockedByFirewall
             b.tvBlockedCount.text = "$totalBlocked"
             b.tvAllowedCount.text = "${TaroqVpnService.allowed}"
         } else {
@@ -126,20 +140,39 @@ class MainActivity : AppCompatActivity() {
             b.tvAllowedCount.text = "—"
         }
 
-        // Layer statuses
-        b.tvLayer1Status.text = if (vpnOn) "🟢 نشط (${TaroqVpnService.blocked})" else "⚪ متوقف"
-        b.tvLayer2Status.text = if (vpnOn) "🟢 نشط" else "⚪ متوقف"
-        b.tvLayer3Status.text = if (vpnOn) "🟢 نشط (${TlsSniInspector.blockedBySni})" else "⚪ متوقف"
-        b.tvLayer4Status.text = if (vpnOn) "🟢 نشط (${HttpAdDetector.blockedByHttp})" else "⚪ متوقف"
-        b.tvLayer5Status.text = when {
-            accessOn -> "🟢 نشط (${TaroqAccessibilityService.hiddenByAccessibility})"
-            else     -> "🔴 غير مفعّل"
-        }
-        // Layer 6 (AI) runs passively inside VPN
-        b.tvLayer6Status.text = if (vpnOn) "🟢 نشط (${TlsSniInspector.inspectedCount} فحص)" else "⚪ متوقف"
+        // ─── 17 Layer statuses ───────────────────────────────────────────────
+        fun st(active: Boolean, detail: String = "") =
+            if (active) "🟢 نشط${if (detail.isNotEmpty()) " ($detail)" else ""}"
+            else "⚪ متوقف"
+        fun stErr(msg: String) = "🔴 $msg"
 
-        // Accessibility prompt
-        b.cardAccessibilityPrompt.visibility = if (!accessOn)
-            android.view.View.VISIBLE else android.view.View.GONE
+        b.tvLayer01Status.text = st(vpnOn, "${TaroqVpnService.blocked} محجوب")
+        b.tvLayer02Status.text = st(vpnOn, "${DohProtection.blockedByDoh} DoH")
+        b.tvLayer03Status.text = st(vpnOn, "VPN نشط")
+        b.tvLayer04Status.text = st(vpnOn, "${UrlFilter.blockedByUrl} URL")
+        b.tvLayer05Status.text = st(vpnOn, "${SslPinningDetector.detectedPinningCount} كشف")
+        b.tvLayer06Status.text = if (accessOn) st(true, "${TaroqAccessibilityService.eventsProcessed} حدث")
+                                 else stErr("يحتاج تفعيل")
+        b.tvLayer07Status.text = if (accessOn) st(true, "${com.taroqos.accessibility.OcrEngine.textExtractionCount} استخراج")
+                                 else stErr("يحتاج تفعيل")
+        b.tvLayer08Status.text = if (accessOn) st(true, "${com.taroqos.accessibility.UiTreeAnalyzer.adNodesFound} عقدة")
+                                 else stErr("يحتاج تفعيل")
+        b.tvLayer09Status.text = if (accessOn) st(true, "${AutoHideEngine.hiddenCount} مخفي")
+                                 else stErr("يحتاج تفعيل")
+        b.tvLayer10Status.text = st(vpnOn || accessOn, "${VisualAiDetector.detectedCount} كشف")
+        b.tvLayer11Status.text = st(vpnOn || accessOn, "${BehavioralDetector.detectedBehavioral} نمط")
+        b.tvLayer12Status.text = st(true, "${AppRulesManager.loadedRules} قاعدة")
+        b.tvLayer13Status.text = if (CloudRuleUpdater.lastUpdateTime > 0)
+            st(true, "${CloudRuleUpdater.totalDownloadedDomains} نطاق")
+            else "🔵 جاهز"
+        b.tvLayer14Status.text = if (LocalTelemetry.isEnabled) st(true, "${LocalTelemetry.getTotalBlocked()} مسجّل")
+                                  else "⚫ معطّل (افتراضي)"
+        b.tvLayer15Status.text = st(vpnOn, "${PrivacyFirewall.blockedByFirewall} محجوب")
+        b.tvLayer16Status.text = st(vpnOn || accessOn, "${OfflineMlEngine.adClassifications} تصنيف")
+        b.tvLayer17Status.text = st(true, "مفتوح المصدر")
+
+        // ─── Accessibility prompt ─────────────────────────────────────────────
+        b.cardAccessibilityPrompt.visibility =
+            if (!accessOn) android.view.View.VISIBLE else android.view.View.GONE
     }
 }

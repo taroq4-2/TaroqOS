@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Taroq OS</string>
-    <string name="accessibility_service_label">Taroq OS — كاشف إعلانات الواجهة</string>
-    <string name="accessibility_service_description">يراقب عناصر واجهة التطبيقات ويخفي المنشورات الإعلانية (Sponsored/Promoted) تلقائياً في Instagram وSnapchat وTikTok وغيرها. لا يجمع أي بيانات شخصية.</string>
+    <string name="accessibility_service_label">Taroq OS — كاشف إعلانات الواجهة (17 طبقة)</string>
+    <string name="accessibility_service_description">
+        يراقب عناصر واجهة التطبيقات ويخفي المنشورات الإعلانية تلقائياً في Instagram وSnapchat وTikTok وغيرها.
+
+        الطبقات التي تعتمد على هذه الخدمة:
+        • Layer 6 — Accessibility Service: قراءة عناصر الواجهة
+        • Layer 7 — OCR Engine: استخراج النص من العناصر
+        • Layer 8 — UI Tree Analyzer: تحليل شجرة الواجهة
+        • Layer 9 — Auto Hide Engine: إخفاء الإعلانات تلقائياً
+
+        الخصوصية: لا يُجمع أي محتوى شخصي. لا يُرسل أي شيء خارج الجهاز.
+        المصدر: مفتوح بالكامل على GitHub — github.com/taroq4-2/TaroqOS
+    </string>
 </resources>
