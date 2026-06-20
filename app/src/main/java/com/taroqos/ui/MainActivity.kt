@@ -2,6 +2,7 @@ package com.taroqos.ui
 
 import android.app.Activity
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -23,7 +24,9 @@ class MainActivity : AppCompatActivity() {
 
     private val vpnLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { if (it.resultCode == Activity.RESULT_OK) launchVpn() }
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) launchVpn()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,22 +68,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopVpn() {
-        startService(Intent(this, TaroqVpnService::class.java).apply {
-            action = TaroqVpnService.ACTION_STOP
-        })
+        startService(
+            Intent(this, TaroqVpnService::class.java).apply {
+                action = TaroqVpnService.ACTION_STOP
+            }
+        )
     }
 
     private fun refresh() {
         val on = TaroqVpnService.isRunning
+
         b.statusDot.setBackgroundResource(
             if (on) R.drawable.dot_green else R.drawable.dot_red
         )
-        b.tvStatusLabel.text = if (on) "الحماية مفعّلة" else "الحماية متوقفة"
-        b.btnToggle.text = if (on) "إيقاف الحماية" else "تفعيل الحماية"
-        b.btnToggle.setBackgroundColor(
-            if (on) getColor(R.color.stop_red) else getColor(R.color.start_green)
-        )
+        b.tvStatusLabel.text  = if (on) "الحماية مفعّلة" else "الحماية متوقفة"
+        b.btnToggle.text      = if (on) "إيقاف الحماية"  else "تفعيل الحماية"
+
+        // MaterialButton requires backgroundTintList — setBackgroundColor() is ignored
+        val tintColor = if (on) getColor(R.color.stop_red) else getColor(R.color.start_green)
+        b.btnToggle.backgroundTintList = ColorStateList.valueOf(tintColor)
+
         b.tvShieldIcon.text = if (on) "🛡️" else "🔓"
+
         if (on) {
             b.tvBlockedCount.text = "${TaroqVpnService.blocked}"
             b.tvAllowedCount.text = "${TaroqVpnService.allowed}"
