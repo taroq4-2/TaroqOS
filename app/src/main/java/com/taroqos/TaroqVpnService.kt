@@ -1,13 +1,14 @@
 package com.taroqos
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
+import android.app.*
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
+import com.taroqos.filter.AdBlockList
+import com.taroqos.filter.DnsProxy
+import com.taroqos.filter.PacketUtils
+import com.taroqos.ui.MainActivity
 import kotlinx.coroutines.*
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -15,164 +16,125 @@ import java.io.FileOutputStream
 class TaroqVpnService : VpnService() {
 
     companion object {
-        const val ACTION_START = "com.taroqos.START_VPN"
-        const val ACTION_STOP  = "com.taroqos.STOP_VPN"
-        const val CHANNEL_ID   = "taroq_vpn_channel"
-        const val NOTIF_ID     = 1
-        @Volatile var isRunning = false
+        const val ACTION_START  = "com.taroqos.START"
+        const val ACTION_STOP   = "com.taroqos.STOP"
+        const val CHANNEL_ID    = "taroq_channel"
+        const val NOTIF_ID      = 1
+        // VPN subnet — only DNS traffic routed here, internet unaffected
+        const val VPN_ADDRESS   = "10.99.0.1"
+        const val VPN_DNS       = "10.99.0.2"
+
+        @Volatile var isRunning  = false
+        @Volatile var blocked    = 0L
+        @Volatile var allowed    = 0L
     }
 
-    private var vpnInterface: ParcelFileDescriptor? = null
-    private var serviceJob: Job? = null
+    private var vpnIface: ParcelFileDescriptor? = null
+    private var job: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private lateinit var dnsProxy: DnsProxy
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return when (intent?.action) {
             ACTION_STOP -> { stopVpn(); START_NOT_STICKY }
-            else        -> { startVpn(); START_STICKY }
+            else        -> { startVpn(); START_STICKY    }
         }
     }
 
     private fun startVpn() {
         if (isRunning) return
-        createNotificationChannel()
-        startForeground(NOTIF_ID, buildNotification())
+        dnsProxy = DnsProxy(this)
+        createChannel()
+        startForeground(NOTIF_ID, buildNotif())
 
-        vpnInterface = Builder()
+        /*
+         * CRITICAL ARCHITECTURE:
+         * We route ONLY 10.99.0.0/24 (our VPN subnet) through the tunnel.
+         * Regular internet traffic (0.0.0.0/0) is NOT intercepted → no internet cut.
+         * Android sends DNS queries to VPN_DNS (10.99.0.2) which is in our subnet.
+         * We intercept those DNS queries, filter ad domains, forward allowed ones.
+         */
+        vpnIface = Builder()
             .setSession("Taroq OS")
-            .addAddress("10.0.0.2", 32)
-            .addRoute("0.0.0.0", 0)
-            .addDnsServer("10.0.0.1")
+            .addAddress(VPN_ADDRESS, 24)
+            .addRoute("10.99.0.0", 24)      // Only our subnet — NOT all traffic
+            .addDnsServer(VPN_DNS)
             .setMtu(1500)
             .setBlocking(false)
             .establish()
-            ?: run { stopSelf(); return }
+
+        if (vpnIface == null) { stopSelf(); return }
 
         isRunning = true
-        serviceJob = scope.launch { runPacketLoop() }
+        job = scope.launch { runLoop() }
     }
 
     private fun stopVpn() {
         isRunning = false
-        serviceJob?.cancel()
-        vpnInterface?.close()
-        vpnInterface = null
+        job?.cancel()
+        vpnIface?.close()
+        vpnIface = null
+        blocked = 0L
+        allowed = 0L
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    private suspend fun runPacketLoop() = coroutineScope {
-        val vpnFd = vpnInterface ?: return@coroutineScope
-        val input  = FileInputStream(vpnFd.fileDescriptor)
-        val output = FileOutputStream(vpnFd.fileDescriptor)
-        val buffer = ByteArray(32767)
+    private suspend fun runLoop() = coroutineScope {
+        val fd    = vpnIface ?: return@coroutineScope
+        val input  = FileInputStream(fd.fileDescriptor)
+        val output = FileOutputStream(fd.fileDescriptor)
+        val buf    = ByteArray(32767)
 
         while (isRunning && isActive) {
             try {
-                val len = input.read(buffer)
-                if (len <= 0) { delay(10); continue }
-                val processed = processPacket(buffer.copyOf(len), len)
-                if (processed != null) output.write(processed)
-            } catch (e: CancellationException) {
-                break
-            } catch (e: Exception) {
-                if (!isRunning) break
-                delay(50)
-            }
+                val len = input.read(buf)
+                if (len < 20) { delay(5); continue }
+
+                if (!PacketUtils.isIpv4(buf, len)) continue
+                if (!PacketUtils.isUdp(buf)) continue
+
+                val ipHdrLen = PacketUtils.getIpHeaderLen(buf)
+                val dstPort  = PacketUtils.getDestPort(buf, ipHdrLen)
+                if (dstPort != 53) continue
+
+                val packet = buf.copyOf(len)
+                val response = dnsProxy.handleDnsPacket(packet, len)
+                if (response != null) {
+                    withContext(Dispatchers.IO) { output.write(response) }
+                }
+                blocked = dnsProxy.blockedCount
+                allowed = dnsProxy.allowedCount
+
+            } catch (_: CancellationException) { break
+            } catch (_: Exception) { delay(10) }
         }
     }
 
-    private fun processPacket(packet: ByteArray, length: Int): ByteArray? {
-        if (length < 20) return packet
-        val version      = (packet[0].toInt() and 0xFF) shr 4
-        if (version != 4) return packet
-        val protocol     = packet[9].toInt() and 0xFF
-        val ipHeaderLen  = (packet[0].toInt() and 0x0F) * 4
-        return when (protocol) {
-            17   -> processUdp(packet, length, ipHeaderLen)
-            6    -> processTcp(packet, length, ipHeaderLen)
-            else -> packet
-        }
-    }
-
-    private fun processUdp(packet: ByteArray, length: Int, ipHeaderLen: Int): ByteArray? {
-        if (length < ipHeaderLen + 8) return packet
-        val destPort = ((packet[ipHeaderLen + 2].toInt() and 0xFF) shl 8) or
-                       (packet[ipHeaderLen + 3].toInt() and 0xFF)
-        if (destPort != 53) return packet
-        val dnsOffset = ipHeaderLen + 8
-        val dnsLength = length - dnsOffset
-        if (dnsLength < 12) return packet
-        val domain = DnsFilter.extractQueryDomain(packet, dnsOffset, dnsLength) ?: return packet
-        return if (AdBlockList.isBlocked(domain))
-            buildBlockedDnsResponse(packet, length, ipHeaderLen, dnsOffset, dnsLength)
-        else packet
-    }
-
-    private fun processTcp(packet: ByteArray, length: Int, ipHeaderLen: Int): ByteArray? {
-        if (length < ipHeaderLen + 20) return packet
-        val destPort = ((packet[ipHeaderLen + 2].toInt() and 0xFF) shl 8) or
-                       (packet[ipHeaderLen + 3].toInt() and 0xFF)
-        if (destPort != 443) return packet
-        val tcpHeaderLen = ((packet[ipHeaderLen + 12].toInt() and 0xFF) shr 4) * 4
-        val payloadOffset = ipHeaderLen + tcpHeaderLen
-        val payloadLength = length - payloadOffset
-        if (payloadLength < 5) return packet
-        val sni = SniFilter.extractSni(packet, payloadOffset, payloadLength) ?: return packet
-        return if (AdBlockList.isBlocked(sni)) null else packet
-    }
-
-    private fun buildBlockedDnsResponse(
-        original: ByteArray, length: Int, ipHeaderLen: Int,
-        dnsOffset: Int, dnsLength: Int
-    ): ByteArray {
-        val dnsResponse = DnsFilter.buildNxdomainResponse(original, dnsOffset, dnsLength)
-        val response = original.copyOf(length)
-        val srcIp = original.copyOfRange(12, 16)
-        val dstIp = original.copyOfRange(16, 20)
-        System.arraycopy(dstIp, 0, response, 12, 4)
-        System.arraycopy(srcIp, 0, response, 16, 4)
-        val srcPort = ((original[ipHeaderLen].toInt() and 0xFF) shl 8) or
-                      (original[ipHeaderLen + 1].toInt() and 0xFF)
-        val dstPort = ((original[ipHeaderLen + 2].toInt() and 0xFF) shl 8) or
-                      (original[ipHeaderLen + 3].toInt() and 0xFF)
-        response[ipHeaderLen]     = (dstPort shr 8).toByte()
-        response[ipHeaderLen + 1] = dstPort.toByte()
-        response[ipHeaderLen + 2] = (srcPort shr 8).toByte()
-        response[ipHeaderLen + 3] = srcPort.toByte()
-        System.arraycopy(dnsResponse, 0, response, dnsOffset, dnsLength)
-        return response
-    }
-
-    private fun buildNotification(): Notification {
-        val stopIntent  = Intent(this, TaroqVpnService::class.java).apply { action = ACTION_STOP }
-        val stopPending = PendingIntent.getService(this, 0, stopIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val openPending = PendingIntent.getActivity(this, 0,
+    private fun buildNotif(): Notification {
+        val open = PendingIntent.getActivity(this, 0,
             Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val stop = PendingIntent.getService(this, 0,
+            Intent(this, TaroqVpnService::class.java).apply { action = ACTION_STOP },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Taroq OS نشط")
-            .setContentText("الإعلانات محجوبة")
+            .setContentTitle("Taroq OS — نشط")
+            .setContentText("حماية مفعّلة • ${AdBlockList.blockedDomains.size}+ نطاق محجوب")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setContentIntent(openPending)
-            .addAction(android.R.drawable.ic_delete, "إيقاف", stopPending)
+            .setContentIntent(open)
+            .addAction(android.R.drawable.ic_delete, "إيقاف", stop)
             .setOngoing(true)
             .build()
     }
 
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, "Taroq OS VPN",
+    private fun createChannel() {
+        val ch = NotificationChannel(CHANNEL_ID, "Taroq OS",
             NotificationManager.IMPORTANCE_LOW).apply {
-            description = "يعمل حاجب الإعلانات في الخلفية"
+            description = "حاجب الإعلانات يعمل في الخلفية"
         }
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-            .createNotificationChannel(channel)
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(ch)
     }
 
-    override fun onDestroy() {
-        stopVpn()
-        scope.cancel()
-        super.onDestroy()
-    }
+    override fun onDestroy() { stopVpn(); scope.cancel(); super.onDestroy() }
 }
