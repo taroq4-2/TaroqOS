@@ -8,12 +8,12 @@ import android.net.VpnService
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            val vpnIntent = VpnService.prepare(context)
-            if (vpnIntent == null) {
-                val serviceIntent = Intent(context, TaroqVpnService::class.java).apply {
-                    action = TaroqVpnService.ACTION_START
-                }
-                context.startForegroundService(serviceIntent)
+            if (VpnService.prepare(context) == null) {
+                context.startForegroundService(
+                    Intent(context, TaroqVpnService::class.java).apply {
+                        action = TaroqVpnService.ACTION_START
+                    }
+                )
             }
         }
     }
