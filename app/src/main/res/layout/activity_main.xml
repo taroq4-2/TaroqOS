@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp"
+    android:background="@color/bg_dark">
+
+    <TextView
+        android:text="🛡️ Taroq OS"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="32sp"
+        android:textColor="@color/color_white"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:text="حاجب الإعلانات الشامل"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textColor="@color/color_subtitle"
+        android:layout_marginBottom="48dp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <View
+            android:id="@+id/tvStatusDot"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="@drawable/dot_red"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="متوقف"
+            android:textSize="18sp"
+            android:textColor="@color/color_white" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnToggle"
+        android:layout_width="220dp"
+        android:layout_height="56dp"
+        android:text="تشغيل الحماية"
+        android:textSize="16sp"
+        android:textColor="@color/color_white"
+        android:backgroundTint="@color/color_start"
+        android:layout_marginTop="24dp"
+        android:stateListAnimator="@null" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="48dp"
+        android:background="@drawable/card_bg"
+        android:padding="16dp">
+
+        <TextView
+            android:text="طبقات الحماية"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/color_white"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:text="✓  فلتر DNS — يحجب 500+ نطاق إعلاني"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/color_green"
+            android:textSize="13sp"
+            android:layout_marginBottom="6dp" />
+
+        <TextView
+            android:text="✓  فلتر SNI — يكشف HTTPS قبل التشفير"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/color_green"
+            android:textSize="13sp"
+            android:layout_marginBottom="6dp" />
+
+        <TextView
+            android:text="✓  بدون root — يعمل كـ VPN محلي"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/color_green"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <TextView
+        android:text="os73.com | @Taro0q"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/color_subtitle"
+        android:textSize="12sp"
+        android:layout_marginTop="32dp" />
+
+</LinearLayout>
