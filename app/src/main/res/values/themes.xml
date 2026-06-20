@@ -1,11 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.TaroqOS" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/color_green</item>
-        <item name="colorPrimaryVariant">@color/color_start</item>
-        <item name="colorOnPrimary">@color/color_white</item>
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorPrimaryVariant">@color/card_bg</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSurface">@color/card_bg</item>
+        <item name="colorOnSurface">@color/white</item>
         <item name="android:windowBackground">@color/bg_dark</item>
         <item name="android:statusBarColor">@color/bg_dark</item>
         <item name="android:navigationBarColor">@color/bg_dark</item>
+    </style>
+
+    <style name="Theme.TaroqOS.WithActionBar" parent="Theme.MaterialComponents.DayNight">
+        <item name="colorPrimary">@color/card_bg</item>
+        <item name="colorPrimaryVariant">@color/bg_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor">@color/card_bg</item>
+        <item name="android:navigationBarColor">@color/bg_dark</item>
+        <item name="actionBarStyle">@style/TaroqActionBar</item>
+    </style>
+
+    <style name="TaroqActionBar" parent="Widget.AppCompat.ActionBar">
+        <item name="background">@color/card_bg</item>
+        <item name="titleTextStyle">@style/TaroqActionBarTitle</item>
+    </style>
+
+    <style name="TaroqActionBarTitle" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+        <item name="android:textColor">@color/white</item>
     </style>
 </resources>
