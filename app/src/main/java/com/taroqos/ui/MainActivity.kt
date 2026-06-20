@@ -106,8 +106,12 @@ class MainActivity : AppCompatActivity() {
         val enabledServices = Settings.Secure.getString(
             contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
-        return TextUtils.SimpleStringSplitter(':').also { it.setString(enabledServices) }
-            .asSequence().any { it.equals(service, ignoreCase = true) }
+        val splitter = TextUtils.SimpleStringSplitter(':')
+        splitter.setString(enabledServices)
+        while (splitter.hasNext()) {
+            if (splitter.next().equals(service, ignoreCase = true)) return true
+        }
+        return false
     }
 
     private fun refresh() {

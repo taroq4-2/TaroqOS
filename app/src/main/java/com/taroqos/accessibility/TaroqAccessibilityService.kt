@@ -112,7 +112,8 @@ class TaroqAccessibilityService : AccessibilityService() {
             if (bounds != null && !bounds.isEmpty) {
                 val visual = VisualAiDetector.analyzeNodeBounds(bounds, screenW, screenH)
                 if (visual.isAd && visual.confidence >= 0.85f) {
-                    val textToFind = extracted.text.ifEmpty { continue }
+                    if (extracted.text.isEmpty()) continue
+                    val textToFind = extracted.text
                     val nodes = root.findAccessibilityNodeInfosByText(textToFind)
                     val node = nodes.firstOrNull() ?: continue
                     val hidden = autoHideEngine.hideWithParent(node)

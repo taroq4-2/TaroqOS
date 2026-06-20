@@ -45,9 +45,10 @@ class AutoHideEngine(private val service: AccessibilityService) {
         }
 
         // Strategy 2: Collapse if supported
-        if (adNode.isCollapsed.not() && adNode.actionList.any {
-                it.id == AccessibilityNodeInfo.AccessibilityAction.ACTION_COLLAPSE.id
-            }) {
+        val canCollapse = adNode.actionList.any {
+            it.id == AccessibilityNodeInfo.AccessibilityAction.ACTION_COLLAPSE.id
+        }
+        if (canCollapse) {
             if (adNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_COLLAPSE.id)) {
                 hiddenCount++
                 return true
@@ -172,8 +173,3 @@ class AutoHideEngine(private val service: AccessibilityService) {
     }
 }
 
-// Extension to avoid crash
-private val AccessibilityNodeInfo.isCollapsed: Boolean
-    get() = try {
-        !this.isExpanded
-    } catch (_: Exception) { false }
